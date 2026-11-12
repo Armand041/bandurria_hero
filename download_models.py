@@ -3,7 +3,7 @@ import os
 import tqdm
 
 url = {
-    "hand_landmarker_full.task": "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task",
+    "hand_landmarker.task": "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task",
 }
 
 for key, value in url.items():
