@@ -4,7 +4,7 @@ import mediapipe as mp
 import numpy as np
 import os
 import time
-from config import config
+from config import config, pos
 
 from ui_initializer import overlay_png
 
@@ -28,11 +28,14 @@ def calculate_distance(point1, point2) -> float:
     return distance
 
 
+#####################
+#     CAMBIAR       #
+#####################
 # Crea una nueva capa y una posición random para el objetivo
 def new_circle(padding) -> None:
-    global circle_layer, random_circle_position
+    global circle_layer, circle_position
     circle_layer =  np.zeros((int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), 3), dtype=np.uint8)
-    random_circle_position = (np.random.randint(padding, circle_layer.shape[1]-padding), np.random.randint(padding, circle_layer.shape[0]-padding))
+    circle_position = (pos.fret[np.random.randint(0, 12)], pos.strings[np.random.randint(0, 6)])
 
 
 # Inicializar landmarker
@@ -52,13 +55,16 @@ with HandLandmarker.create_from_options(options) as landmarker:
     blue_back = np.zeros((int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), 3), dtype=np.uint8)
     blue_back[:] = (255, 0, 0)
 
+    #######################
+    #      MODIFICAR      #
+    #######################
     new_circle(config.padding)
 
     # Cargar PNG manteniendo el canal alfa (transparencia)
     ruta_png = os.path.join(os.path.dirname(__file__), "images/bandurria_frame.png")
     img_png = cv2.imread(ruta_png, cv2.IMREAD_UNCHANGED)
 
-    # Opcional: redimensionar si es muy grande (ancho, alto)
+    # Redimensionar el overlay para ajustarse a la bandurria
     img_png = cv2.resize(img_png, (650, 206))
 
     while cap.isOpened():
@@ -69,13 +75,16 @@ with HandLandmarker.create_from_options(options) as landmarker:
         # Voltear frame horizontalmente
         frame = cv2.flip(frame, 1)
 
+        ##########################################
+        #    MODIFICAR PARA QUE NO SEA RANDOM    #
+        ##########################################
         # Dibuja el circulo random en el frame
-        cv2.circle(circle_layer, random_circle_position, 20, (255, 255, 255), -1)
+        cv2.circle(circle_layer, circle_position, 10, (255, 255, 255), -1)
         h, w = circle_layer.shape[:2]
         frame = np.where(circle_layer != 0, blue_back, frame)
 
-        # Posición fija
-        frame = overlay_png(frame, img_png, x=225, y=300)
+        # Posición fija del overlay
+        frame = overlay_png(frame, img_png, x=130, y=270)
 
         # Variables de tiempo
         t = end_time - start_time
@@ -115,7 +124,7 @@ with HandLandmarker.create_from_options(options) as landmarker:
                 for landmark in landmarks_points:
                     h, w, _ = frame.shape
                     x, y = int(landmark[0] * w), int(landmark[1] * h)
-                    if calculate_distance(landmark, (random_circle_position[0]/w, random_circle_position[1]/h)) < 0.05:
+                    if calculate_distance(landmark, (circle_position[0]/w, circle_position[1]/h)) < 0.05:
                         counter += 1
                         sum_t = 0
                         new_circle(config.padding)
@@ -126,7 +135,7 @@ with HandLandmarker.create_from_options(options) as landmarker:
             new_circle(config.padding)
         else:
             radius = int((20 + config.circle_time) - (config.circle_time_radius * (sum_t - config.circle_time)) / config.circle_time)
-            cv2.circle(frame, random_circle_position, radius, (255, 255, 255), 2)
+            cv2.circle(frame, circle_position, radius, (255, 255, 255), 2)
 
         end_time = time.time()
 
