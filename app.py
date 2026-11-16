@@ -7,6 +7,7 @@ import time
 from config import config, pos
 
 from ui_initializer import overlay_png
+from song import clavelitos, cintas, alma
 
 
 # Configuración de la tarea
