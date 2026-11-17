@@ -42,6 +42,34 @@ def new_circle(padding) -> None:
 # Inicializar landmarker
 with HandLandmarker.create_from_options(options) as landmarker:
     cap = cv2.VideoCapture(0)  # Abrir cámara
+    selected_song=None
+    while cap.isOpened() and selected_song is None:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frame=cv2.flip(frame,1)
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (0, 0), (frame.shape[1], frame.shape[0]), (0, 0, 0), -1)
+        frame = cv2.addWeighted(overlay, 0.7, frame, 0.3, 0)
+
+        cv2.putText(frame, "BANDURRIA HERO", (150, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 255), 3)
+        cv2.putText(frame, f"1. {clavelitos.name} (Tempo: {clavelitos.tempo})", (100, 200), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        cv2.putText(frame, f"2. {cintas.name} (Tempo: {cintas.tempo})", (100, 250), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        cv2.putText(frame, f"3. {alma.name} (Tempo: {alma.tempo})", (100, 300), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        cv2.putText(frame, "Pulsa 1, 2 o 3 para jugar (ESC para salir)", (100, 400), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+        cv2.imshow("Hand Landmarker", frame)
+
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('1'): 
+            selected_song = clavelitos
+        elif key == ord('2'): 
+            selected_song = cintas
+        elif key == ord('3'): 
+            selected_song = alma
+        elif key == 27: # Tecla ESC
+            sys.exit(0)
+
     fps = cap.get(cv2.CAP_PROP_FPS)
     if fps == 0:  # seguridad si la cámara no da fps
         fps = 30
