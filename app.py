@@ -4,9 +4,9 @@ import mediapipe as mp
 import numpy as np
 import os
 import time
-from config import config, pos
+from config import config
 
-from ui_initializer import overlay_png
+from ui_initializer import overlay_png, circle_initializer
 from song import clavelitos, cintas, alma
 
 
@@ -23,31 +23,23 @@ options = HandLandmarkerOptions(
 )
 
 
-# L2 Norm entre la mano y el punto objetivo (azul) 
+# L2 Norm entre la mano y el punto objetivo (azul)
 def calculate_distance(point1, point2) -> float:
     distance = np.sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2)
     return distance
 
 
-#####################
-#     CAMBIAR       #
-#####################
-# Crea una nueva capa y una posición random para el objetivo
-def new_circle(padding) -> None:
-    global circle_layer, circle_position
-    circle_layer =  np.zeros((int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), 3), dtype=np.uint8)
-    circle_position = (pos.fret[np.random.randint(0, 12)], pos.strings[np.random.randint(0, 6)])
-
-
 # Inicializar landmarker
 with HandLandmarker.create_from_options(options) as landmarker:
     cap = cv2.VideoCapture(0)  # Abrir cámara
-    selected_song=None
+    selected_song = None
+
+    # Abrimos menú
     while cap.isOpened() and selected_song is None:
         ret, frame = cap.read()
         if not ret:
             break
-        frame=cv2.flip(frame,1)
+        frame = cv2.flip(frame, 1)
         overlay = frame.copy()
         cv2.rectangle(overlay, (0, 0), (frame.shape[1], frame.shape[0]), (0, 0, 0), -1)
         frame = cv2.addWeighted(overlay, 0.7, frame, 0.3, 0)
@@ -61,13 +53,13 @@ with HandLandmarker.create_from_options(options) as landmarker:
         cv2.imshow("Hand Landmarker", frame)
 
         key = cv2.waitKey(1) & 0xFF
-        if key == ord('1'): 
+        if key == ord('1'):
             selected_song = clavelitos
-        elif key == ord('2'): 
+        elif key == ord('2'):
             selected_song = cintas
-        elif key == ord('3'): 
+        elif key == ord('3'):
             selected_song = alma
-        elif key == 27: # Tecla ESC
+        elif key == 27:  # Tecla ESC
             sys.exit(0)
 
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -84,11 +76,9 @@ with HandLandmarker.create_from_options(options) as landmarker:
     blue_back = np.zeros((int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), 3), dtype=np.uint8)
     blue_back[:] = (255, 0, 0)
 
-    #######################
-    #      MODIFICAR      #
-    #######################
-    new_circle(config.padding)
+    circle_layer, circle_position = selected_song.next_circle(cap)
 
+    # MOVER ESTO A UI?
     # Cargar PNG manteniendo el canal alfa (transparencia)
     ruta_png = os.path.join(os.path.dirname(__file__), "images/bandurria_frame.png")
     img_png = cv2.imread(ruta_png, cv2.IMREAD_UNCHANGED)
@@ -156,12 +146,12 @@ with HandLandmarker.create_from_options(options) as landmarker:
                     if calculate_distance(landmark, (circle_position[0]/w, circle_position[1]/h)) < 0.05:
                         counter += 1
                         sum_t = 0
-                        new_circle(config.padding)
+                        circle_layer, circle_position = selected_song.next_circle(cap)
                         break
 
         if sum_t > config.circle_time:
             sum_t = 0
-            new_circle(config.padding)
+            circle_layer, circle_position = selected_song.next_circle(cap)
         else:
             radius = int((20 + config.circle_time) - (config.circle_time_radius * (sum_t - config.circle_time)) / config.circle_time)
             cv2.circle(frame, circle_position, radius, (255, 255, 255), 2)

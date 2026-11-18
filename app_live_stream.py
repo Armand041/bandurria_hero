@@ -16,6 +16,7 @@ VisionRunningMode = mp.tasks.vision.RunningMode
 # Variable global para almacenar el último resultado recibido por el callback
 latest_result = None
 
+
 # Función callback que recibe resultados de forma asíncrona (requerido en LIVE_STREAM)
 def result_listener(result, output_image, timestamp_ms):
     global latest_result

@@ -1,3 +1,7 @@
+import numpy as np
+import cv2
+
+
 def overlay_png(background, overlay, x, y):
     h, w = overlay.shape[:2]
     bg_h, bg_w = background.shape[:2]
@@ -24,3 +28,9 @@ def overlay_png(background, overlay, x, y):
         background[y:y+h, x:x+w] = overlay
 
     return background
+
+
+def circle_initializer(cap):
+    circle_layer = np.zeros((int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), 3), dtype=np.uint8)
+
+    return circle_layer
