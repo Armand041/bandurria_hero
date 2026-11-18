@@ -1,3 +1,4 @@
 *.task
 mp_env/
 .vscode
+*.pyc
