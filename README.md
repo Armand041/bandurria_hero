@@ -50,3 +50,26 @@ Para descargar los pesos de otros modelos como _Hand Landmarker_, _Face Landmark
 ```bash
 python app.py
 ```
+QUE NOS QUEDA:
+
+Sincronizar bien las canciones (Empieza a sonar antes de que aparezcan los puntos)
+
+Opción de reducir velocidades
+
+Opción para ajustar el tamaño del diapasón (pentagrama)
+
+Pantalla de puntuación y ranking y accuraccy
+
+Cambiar símbolos para silencios y al aire
+
+Cambiar círculo por el simbolo correcto
+
+PREGUNTAR README guía de instalación y algún comentario de código o librerías opcional
+
+Hacer el vídeo
+
+Tryhardear:
+
+Poner la letra de la canción
+
+
