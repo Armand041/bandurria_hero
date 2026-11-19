@@ -11,10 +11,12 @@ class Song:
 
         # Parseamos el nombre del archivo para conseguir el nombre y el tempo
         self.name, self.tempo = self.parse_filename(song_file)
+        self.tempo_sec = 60/self.tempo  # Cambiamos el tempo de n/min a n/s
         self.audio_file=audio_file
         # Cargamos los datos que necesitemos
         self.frets = []
         self.strings = []
+        self.duration = []
         self.load_csv(song_file)
 
         self.Fpx, self.Spx = self.__class__.SF_to_px(self.frets, self.strings)
@@ -29,6 +31,7 @@ class Song:
 
         self.frets = [f - 1 for f in Tfrets]
         self.strings = [s - 1 for s in Tstrings]
+        self.duration = song_data["Duracion"].tolist()
 
     # Comprueba que el archivo exista
     def check_file(self, song_file):
@@ -86,9 +89,11 @@ class Song:
         posF, posS = self.Fpx[self.nNote], self.Spx[self.nNote]
         circle_layer, circle_position = self.create_circle(posF, posS, cap)
 
+        note_duration = self.duration[self.nNote] * self.tempo_sec
+
         self.nNote += 1
 
-        return circle_layer, circle_position
+        return circle_layer, circle_position, note_duration
     def play(self):
         pygame.mixer.music.load(self.audio_file)
         pygame.mixer.music.play()

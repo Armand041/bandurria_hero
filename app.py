@@ -6,7 +6,7 @@ import os
 import time
 from config import config
 
-from ui_initializer import overlay_png, circle_initializer
+from ui_initializer import overlay_png
 from song import clavelitos, cintas, alma
 
 
@@ -74,12 +74,9 @@ with HandLandmarker.create_from_options(options) as landmarker:
     frame_ms = int(1000 / fps)
 
     # Inicializar valores
-    timestamp = start_time = end_time = sum_t = counter = final_counter = 0
+    timestamp = sum_t = counter = final_counter = 0
 
-    blue_back = np.zeros((int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), 3), dtype=np.uint8)
-    blue_back[:] = (255, 0, 0)
-
-    circle_layer, circle_position = selected_song.next_circle(cap)
+    circle_layer, circle_position, current_note_duration = selected_song.next_circle(cap)
 
     # MOVER ESTO A UI?
     # Cargar PNG manteniendo el canal alfa (transparencia)
@@ -89,32 +86,41 @@ with HandLandmarker.create_from_options(options) as landmarker:
     # Redimensionar el overlay para ajustarse a la bandurria
     img_png = cv2.resize(img_png, (650, 206))
 
+    last_time = time.perf_counter()
+
+    back = np.zeros((int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), 3), dtype=np.uint8)
+    color_normal = np.full_like(back, (255, 0, 0))   # Azul
+    color_acierto = np.full_like(back, (0, 255, 0))  # Verde
+
+    note_hit = False
+
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
 
+        now = time.perf_counter()
+        dt = now - last_time
+        last_time = now
+        sum_t += dt
+
         # Voltear frame horizontalmente
         frame = cv2.flip(frame, 1)
 
-        ##########################################
-        #    MODIFICAR PARA QUE NO SEA RANDOM    #
-        ##########################################
-        # Dibuja el circulo random en el frame
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+
+        # Dibuja el circulo en el frame
         cv2.circle(circle_layer, circle_position, 10, (255, 255, 255), -1)
         h, w = circle_layer.shape[:2]
-        frame = np.where(circle_layer != 0, blue_back, frame)
+        color_actual = color_acierto if note_hit else color_normal
+        frame = np.where(circle_layer != 0, color_actual, frame)
 
         # Posición fija del overlay
         frame = overlay_png(frame, img_png, x=130, y=270)
 
-        # Variables de tiempo
-        t = end_time - start_time
-        sum_t += t
-        start_time = time.time()
-
         # Convertir frame a formato MediaPipe
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
         # Ejecutar detección
         result = landmarker.detect_for_video(mp_image, timestamp)
@@ -146,17 +152,18 @@ with HandLandmarker.create_from_options(options) as landmarker:
                 for landmark in landmarks_points:
                     h, w, _ = frame.shape
                     x, y = int(landmark[0] * w), int(landmark[1] * h)
-                    if calculate_distance(landmark, (circle_position[0]/w, circle_position[1]/h)) < 0.05:
+                    if calculate_distance(landmark, (circle_position[0]/w, circle_position[1]/h)) < 0.05 and not note_hit:
                         counter += 1
-                        sum_t = 0
-                        circle_layer, circle_position = selected_song.next_circle(cap)
+                        note_hit = True
                         break
 
-        if sum_t > config.circle_time:
+        if sum_t >= current_note_duration:
             sum_t = 0
-            circle_layer, circle_position = selected_song.next_circle(cap)
+            circle_layer, circle_position, current_note_duration = selected_song.next_circle(cap)
+            note_hit = False
         else:
-            radius = int((20 + config.circle_time) - (config.circle_time_radius * (sum_t - config.circle_time)) / config.circle_time)
+            progreso = sum_t / current_note_duration  # va de 0.0 a 1.0
+            radius = int(10 + 30 * (1.0 - progreso))  # empieza en 40px y llega a 10px (tamaño del círculo interior)
             cv2.circle(frame, circle_position, radius, (255, 255, 255), 2)
 
         end_time = time.time()
@@ -164,7 +171,7 @@ with HandLandmarker.create_from_options(options) as landmarker:
         # Mostrar tiempo restante de juego y puntos obtenidos
         cv2.putText(frame, f'Time: {config.game_time:.2f} - Points: {counter}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
         
-        config.game_time -= t
+        config.game_time -= dt
         
         if config.game_time <= 0:
             frame = np.zeros((int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), 3), dtype=np.uint8)
