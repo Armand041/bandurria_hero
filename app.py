@@ -61,6 +61,9 @@ with HandLandmarker.create_from_options(options) as landmarker:
             selected_song = alma
         elif key == 27:  # Tecla ESC
             sys.exit(0)
+        
+    if selected_song is not None:
+        selected_song.play()
 
     fps = cap.get(cv2.CAP_PROP_FPS)
     if fps == 0:  # seguridad si la cámara no da fps

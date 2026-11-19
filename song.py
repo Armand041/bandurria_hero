@@ -2,16 +2,16 @@ import os
 import pandas as pd
 import cv2
 import numpy as np
-
-
+import pygame
+pygame.mixer.init()
 class Song:
-    def __init__(self, song_file) -> None:
+    def __init__(self, song_file, audio_file) -> None:
 
         self.check_file(song_file)  # Confirmamos que el archivo existe
 
         # Parseamos el nombre del archivo para conseguir el nombre y el tempo
         self.name, self.tempo = self.parse_filename(song_file)
-
+        self.audio_file=audio_file
         # Cargamos los datos que necesitemos
         self.frets = []
         self.strings = []
@@ -89,8 +89,13 @@ class Song:
         self.nNote += 1
 
         return circle_layer, circle_position
-        
+    def play(self):
+        pygame.mixer.music.load(self.audio_file)
+        pygame.mixer.music.play()
+    def stop(self):
+        pygame.mixer.music.stop()
+    
 
-clavelitos = Song("./songs/clavelitos-185.csv")
-cintas = Song("./songs/las_cintas_de_mi_capa-130.csv")
-alma = Song("./songs/alma_corazon_y_vida-160.csv")
+clavelitos = Song("./songs/clavelitos-185.csv", "./songs/clavelitos.mp3")
+cintas = Song("./songs/las_cintas_de_mi_capa-130.csv", "./songs/las_cintas_de_mi_capa.mp3")
+alma = Song("./songs/alma_corazon_y_vida-160.csv", "./songs/alma.mp3")
