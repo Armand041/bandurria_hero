@@ -89,7 +89,7 @@ class Song:
         self.nNote += 1
 
         return circle_layer, circle_position
-        
+
 
 clavelitos = Song("./songs/clavelitos-185.csv")
 cintas = Song("./songs/las_cintas_de_mi_capa-130.csv")
