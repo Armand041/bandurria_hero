@@ -105,8 +105,12 @@ class Song:
 
     def stop(self):
         pygame.mixer.music.stop()
+    
+    def reset(self):
+        self.nNote = 0
+        self.stop()
 
 
 clavelitos = Song("./songs/clavelitos-185.csv", "./songs/clavelitos.mp3")
 cintas = Song("./songs/las_cintas_de_mi_capa-130.csv", "./songs/las_cintas_de_mi_capa.mp3")
-alma = Song("./songs/alma_corazon_y_vida-160.csv", "./songs/alma.mp3")
+alma = Song("./songs/alma_corazon_y_vida-160.csv", "./songs/alma_corazon_y_vida.mp3")
