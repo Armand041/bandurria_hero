@@ -5,7 +5,7 @@ import numpy as np
 import os
 import time
 from config import config
-
+from ranking import save_score
 from ui_initializer import overlay_png
 from song import clavelitos, cintas, alma
 
@@ -56,8 +56,13 @@ with HandLandmarker.create_from_options(options) as landmarker:
     color_acierto = np.full_like(back, (0, 255, 0))  # Verde
 
     while cap.isOpened():
+
         selected_song=None
         song_finished=False
+        score_saved=False
+        player_name= ""
+        top_scores=[]
+
         while cap.isOpened() and selected_song is None:
 
             ret, frame = cap.read()
@@ -83,6 +88,7 @@ with HandLandmarker.create_from_options(options) as landmarker:
                 selected_song = cintas
             elif key == ord('3'):
                 selected_song = alma
+
             elif key == 27 or cv2.getWindowProperty("Hand Landmarker", cv2.WND_PROP_VISIBLE) < 1:  # Tecla ESC
                 cap.release()
                 cv2.destroyAllWindows()
@@ -185,20 +191,44 @@ with HandLandmarker.create_from_options(options) as landmarker:
             if song_finished:
                 accuracy = (counter / len(selected_song.frets)) * 100
                 frame = np.zeros((int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), 3), dtype=np.uint8)
-                cv2.putText(frame, f'Score: {counter} / {len(selected_song.frets)}', (150, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                cv2.putText(frame, f'Accuracy: {accuracy:.1f}%', (150, 170), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
-                cv2.putText(frame, 'Pulsa ENTER para volver al menu', (100, 260), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-                cv2.putText(frame, 'Pulsa ESC para salir', (150, 310), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 128, 255), 2)
+                cv2.putText(frame, f'Score: {counter} / {len(selected_song.frets)}', (150, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                cv2.putText(frame, f'Accuracy: {accuracy:.1f}%', (150, 115), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+                if not score_saved:
+                    display_name = " ".join(player_name.ljust(3, "_"))
+                    cv2.putText(frame, 'INTRODUCE TUS INICIALES:', (130, 195), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+                    cv2.putText(frame, display_name, (230, 260), cv2.FONT_HERSHEY_SIMPLEX, 1.8, (0, 255, 255), 3)
+                    cv2.putText(frame, 'Pulsa ENTER para guardar', (140, 325), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
+                else:
+                    cv2.putText(frame, f'TOP 3 - {selected_song.name}', (150, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
+                    for i, entry in enumerate(top_scores):
+                        texto = f"{i+1}. {entry['name']} - {entry['score']}/{entry['total']} ({entry['accuracy']}%)"
+                        cv2.putText(frame, texto, (140, 225 + i * 35), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
+
+                    cv2.putText(frame, 'Pulsa ENTER para volver al menu', (100, 360), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+                    cv2.putText(frame, 'Pulsa ESC para salir', (150, 405), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 128, 255), 2)
             
             cv2.imshow("Hand Landmarker", frame)
             # UN SOLO waitKey por fotograma
             key = cv2.waitKey(1) & 0xFF
             if key == 27 or cv2.getWindowProperty("Hand Landmarker", cv2.WND_PROP_VISIBLE) < 1:  # ESC o cerrar la ventana
                 selected_song.stop()
+                cap.release()
+                cv2.destroyAllWindows()
                 sys.exit(0)
-            elif song_finished and key == 13:  # ENTER vuelve al menú
+            elif song_finished and not score_saved:
+                if key==8:
+                    player_name = player_name[:-1]
+                elif key==13:
+                    final_name=player_name if player_name else "AAA"
+                    accuracy=(counter/len(selected_song.frets))*100
+                    top_scores=save_score(selected_song.name, final_name, counter, len(selected_song.frets), accuracy)
+                    score_saved=True
+                elif len(player_name) < 3 and (65 <= key <= 90 or 97 <= key <= 122 or 48 <= key <= 57):
+                    player_name+=chr(key).upper()
+            elif song_finished and score_saved and key==13:
                 selected_song.reset()
-                break  # Sale del bucle de partida y vuelve al menú exterior
+                break
+
 
 
 
