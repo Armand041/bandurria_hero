@@ -44,10 +44,13 @@ with HandLandmarker.create_from_options(options) as landmarker:
     # MOVER ESTO A UI?
     # Cargar PNG manteniendo el canal alfa (transparencia)
     ruta_png = os.path.join(os.path.dirname(__file__), "images/bandurria_frame.png")
-    img_png = cv2.imread(ruta_png, cv2.IMREAD_UNCHANGED)
+    img_png_raw = cv2.imread(ruta_png, cv2.IMREAD_UNCHANGED)
+    base_w, base_h = 650,206
+    base_x, base_y= 130,270
+    fretboard_scale=1.0
+    offset_x, offset_y= 0,0
 
-    # Redimensionar el overlay para ajustarse a la bandurria
-    img_png = cv2.resize(img_png, (650, 206))
+  
 
 
 
@@ -72,12 +75,21 @@ with HandLandmarker.create_from_options(options) as landmarker:
             overlay = frame.copy()
             cv2.rectangle(overlay, (0, 0), (frame.shape[1], frame.shape[0]), (0, 0, 0), -1)
             frame = cv2.addWeighted(overlay, 0.7, frame, 0.3, 0)
+            h, w, _ = frame.shape
+            cur_w = min(w - 2, int(base_w * fretboard_scale))
+            cur_h = min(h - 2, int(base_h * fretboard_scale))
+            cur_x = int(np.clip(base_x - (cur_w - base_w) / 2 + offset_x, 0, max(0, w - cur_w)))
+            cur_y = int(np.clip(base_y - (cur_h - base_h) / 2 + offset_y, 0, max(0, h - cur_h)))
+            preview_png = cv2.resize(img_png_raw, (cur_w, cur_h))
+            frame = overlay_png(frame, preview_png, x=cur_x, y=cur_y)
+            
+            cv2.putText(frame, "BANDURRIA HERO", (160, 55), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 255, 255), 3)
+            cv2.putText(frame, f"1. {clavelitos.name} (Tempo: {clavelitos.tempo})", (100, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
+            cv2.putText(frame, f"2. {cintas.name} (Tempo: {cintas.tempo})", (100, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
+            cv2.putText(frame, f"3. {alma.name} (Tempo: {alma.tempo})", (100, 190), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
 
-            cv2.putText(frame, "BANDURRIA HERO", (150, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 255), 3)
-            cv2.putText(frame, f"1. {clavelitos.name} (Tempo: {clavelitos.tempo})", (100, 200), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-            cv2.putText(frame, f"2. {cintas.name} (Tempo: {cintas.tempo})", (100, 250), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-            cv2.putText(frame, f"3. {alma.name} (Tempo: {alma.tempo})", (100, 300), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-            cv2.putText(frame, "Pulsa 1, 2 o 3 para jugar (ESC para salir)", (100, 400), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            cv2.putText(frame, f"Diapason [+/-] Zoom: {int(fretboard_scale*100)}% | [WASD] Mover | [R] Reset", (55, h - 45), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
+            cv2.putText(frame, "Pulsa 1, 2 o 3 para jugar (ESC para salir)", (95, h - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 0), 2)
 
             cv2.imshow("Hand Landmarker", frame)
 
@@ -88,7 +100,20 @@ with HandLandmarker.create_from_options(options) as landmarker:
                 selected_song = cintas
             elif key == ord('3'):
                 selected_song = alma
-
+            elif key == ord('+') or key == ord('=') or key == ord(']'):
+              fretboard_scale = min(1.2, round(fretboard_scale + 0.05, 2))
+            elif key == ord('-') or key == ord('['):
+                fretboard_scale = max(0.6, round(fretboard_scale - 0.05, 2))
+            elif key == ord('w') or key == ord('W'):
+                offset_y -= 10
+            elif key == ord('s') or key == ord('S'):
+                offset_y += 10
+            elif key == ord('a') or key == ord('A'):
+                offset_x -= 10
+            elif key == ord('d') or key == ord('D'):
+                offset_x += 10
+            elif key == ord('r') or key == ord('R'):
+                fretboard_scale, offset_x, offset_y = 1.0, 0, 0
             elif key == 27 or cv2.getWindowProperty("Hand Landmarker", cv2.WND_PROP_VISIBLE) < 1:  # Tecla ESC
                 cap.release()
                 cv2.destroyAllWindows()
@@ -121,13 +146,30 @@ with HandLandmarker.create_from_options(options) as landmarker:
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
             # Dibuja el circulo en el frame
-            cv2.circle(circle_layer, circle_position, 10, (255, 255, 255), -1)
-            h, w = circle_layer.shape[:2]
+            h, w, _ = frame.shape
+            cur_w = min(w - 2, int(base_w * fretboard_scale))
+            cur_h = min(h - 2, int(base_h * fretboard_scale))
+            img_png = cv2.resize(img_png_raw, (cur_w, cur_h))
+
+            cur_x = int(np.clip(base_x - (cur_w - base_w) / 2 + offset_x, 0, max(0, w - cur_w)))
+            cur_y = int(np.clip(base_y - (cur_h - base_h) / 2 + offset_y, 0, max(0, h - cur_h)))
+
+            actual_dx = cur_x - int(base_x - (cur_w - base_w) / 2)
+            actual_dy = cur_y - int(base_y - (cur_h - base_h) / 2)
+
+            center_x = base_x + base_w / 2
+            center_y = base_y + base_h / 2
+            scaled_pos = (
+                int(center_x + (circle_position[0] - center_x) * fretboard_scale + actual_dx),
+                int(center_y + (circle_position[1] - center_y) * fretboard_scale + actual_dy),
+            )
+
+            circle_layer[:] = 0
+            cv2.circle(circle_layer, scaled_pos, max(4, int(10 * fretboard_scale)), (255, 255, 255), -1)
             color_actual = color_acierto if note_hit else color_normal
             frame = np.where(circle_layer != 0, color_actual, frame)
 
-            # Posición fija del overlay
-            frame = overlay_png(frame, img_png, x=130, y=270)
+            frame = overlay_png(frame, img_png, x=cur_x, y=cur_y)
 
             # Convertir frame a formato MediaPipe
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
@@ -162,7 +204,7 @@ with HandLandmarker.create_from_options(options) as landmarker:
                     for landmark in landmarks_points:
                         h, w, _ = frame.shape
                         x, y = int(landmark[0] * w), int(landmark[1] * h)
-                        if calculate_distance(landmark, (circle_position[0]/w, circle_position[1]/h)) < 0.05 and not note_hit:
+                        if calculate_distance(landmark, (scaled_pos[0] / w, scaled_pos[1] / h)) < (0.05 * fretboard_scale) and not note_hit:
                             counter += 1
                             note_hit = True
                             break
@@ -178,8 +220,8 @@ with HandLandmarker.create_from_options(options) as landmarker:
                         selected_song.stop()
                 else:
                     progreso = sum_t / current_note_duration
-                    radius = int(10 + 30 * (1.0 - progreso))
-                    cv2.circle(frame, circle_position, radius, (255, 255, 255), 2)
+                    radius = int((10 + 30 * (1.0 - progreso)) * fretboard_scale)
+                    cv2.circle(frame, scaled_pos, radius, (255, 255, 255), 2)
 
             end_time = time.time()
 
@@ -215,6 +257,20 @@ with HandLandmarker.create_from_options(options) as landmarker:
                 cap.release()
                 cv2.destroyAllWindows()
                 sys.exit(0)
+            elif not song_finished and (key == ord('+') or key == ord('=') or key == ord(']')):
+                fretboard_scale = min(1.2, round(fretboard_scale + 0.05, 2))
+            elif not song_finished and (key == ord('-') or key == ord('[')):
+                fretboard_scale = max(0.6, round(fretboard_scale - 0.05, 2))
+            elif not song_finished and (key == ord('w') or key == ord('W')):
+                offset_y -= 10
+            elif not song_finished and (key == ord('s') or key == ord('S')):
+                offset_y += 10
+            elif not song_finished and (key == ord('a') or key == ord('A')):
+                offset_x -= 10
+            elif not song_finished and (key == ord('d') or key == ord('D')):
+                offset_x += 10
+            elif not song_finished and (key == ord('r') or key == ord('R')):
+                fretboard_scale, offset_x, offset_y = 1.0, 0, 0
             elif song_finished and not score_saved:
                 if key==8:
                     player_name = player_name[:-1]

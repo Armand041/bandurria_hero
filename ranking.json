@@ -2,6 +2,12 @@
     "clavelitos": [
         {
             "name": "CBO",
+            "score": 93,
+            "total": 380,
+            "accuracy": 24.5
+        },
+        {
+            "name": "CBO",
             "score": 0,
             "total": 380,
             "accuracy": 0.0
@@ -11,11 +17,19 @@
             "score": 0,
             "total": 380,
             "accuracy": 0.0
-        },
+        }
+    ],
+    "las_cintas_de_mi_capa": [
         {
             "name": "CBO",
+            "score": 173,
+            "total": 496,
+            "accuracy": 34.9
+        },
+        {
+            "name": "SOA",
             "score": 0,
-            "total": 380,
+            "total": 496,
             "accuracy": 0.0
         }
     ]
