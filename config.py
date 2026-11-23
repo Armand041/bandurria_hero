@@ -3,11 +3,33 @@ import os
 
 class Config:
     def __init__(self):
-        self.model_path = os.path.join(os.path.dirname(__file__), 'models/hand_landmarker.task')
-        self.padding = 100
-        self.game_time = 6000.0    # Duración del juego en segundos
-        self.circle_time = 1    # Duración de cada circulo azul antes de que desaparezca
-        self.circle_time_radius = 15
+        # Paths
+        self.base_dir = os.path.dirname(__file__)
+        self.model_path = os.path.join(self.base_dir, 'models/hand_landmarker.task')
+        self.fretboard_img_path = os.path.join(self.base_dir, "images/bandurria_frame.png")
+        self.song_base_path = os.path.join(self.base_dir, "songs")
+
+        # Ventana y cámara
+        self.window_name = "Bandurria Hero"
+        self.default_fps = 30
+
+        # Tiempos y detección
+        self.game_time = 6000.0
+        self.num_hands = 1
+        self.hit_threshold = 0.05
+        self.fingertip_indices = [8, 12, 16, 20]  # Índice, corazón, anular, meñique
+
+        # Dimensiones base del diapasón
+        self.fretboard_base_w = 650
+        self.fretboard_base_h = 206
+        self.fretboard_base_x = 130
+        self.fretboard_base_y = 270
+        self.min_scale = 0.6
+        self.max_scale = 1.2
+
+        # Colores (BGR)
+        self.color_normal = (255, 0, 0)  # Azul
+        self.color_hit = (0, 255, 0)     # Verde
 
 
 config = Config()  # Instancia única
