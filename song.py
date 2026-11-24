@@ -116,10 +116,15 @@ class Song:
         note_start = self.start_times[self.nNote]
         note_dur = raw_dur * self.tempo_sec
         progress = min(1.0, max(0.0, (current_time - note_start) / note_dur))
-
+        
+        note_type = self.get_note_symbol_name(raw_dur)
+        is_rest = self.frets[self.nNote] == -2
+        if is_rest:
+            return "PLAYING", None, None, progress, self.nNote, note_type, False
+        
         pos_f, pos_s = self.Fpx[self.nNote], self.Spx[self.nNote]
         circle_layer, circle_position = self.create_circle(pos_f, pos_s, frame_w, frame_h)
-        note_type = self.get_note_symbol_name(raw_dur)
+        
 
         is_open = self.frets[self.nNote] == -1
         return "PLAYING", circle_layer, circle_position, progress, self.nNote, note_type, is_open

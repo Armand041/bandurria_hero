@@ -15,7 +15,10 @@ def save_score(song_name, name, score, total_notes, accuracy, velocity):
     data = load_ranking()
     speed_key = f"{velocity}x"
 
-    song_scores = data.setdefault(song_name, {})
+    song_scores = data.get(song_name)
+    if not isinstance(song_scores,dict):
+        song_scores={}
+        data[song_name]= song_scores
     scores = song_scores.get(speed_key, [])
 
     scores.append({
@@ -26,9 +29,9 @@ def save_score(song_name, name, score, total_notes, accuracy, velocity):
     })
     scores.sort(key=lambda x: (x["score"], x["accuracy"]), reverse=True)
     song_scores[speed_key] = scores[:3]
-    data[song_name] = scores[:3]
+
 
     with open(RANKING_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
 
-    return data[song_name]
+    return song_scores[speed_key]

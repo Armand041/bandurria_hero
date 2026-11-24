@@ -127,18 +127,10 @@ class GameRenderer:
                 frame = self._draw_open_string_indicator(frame, scaled_pos, cur_x, cur_w, note_hit)
             else:
                 frame = self._draw_vector_note(frame, scaled_pos, note_type or "negra")
-
-        # Solo dibujar el círculo objetivo si ya hemos llegado a la primera nota
-        if circle_layer is not None and scaled_pos is not None:
-            frame = self._draw_vector_note(frame, scaled_pos, note_type)
-            circle_layer[:] = 0
-            cv2.circle(circle_layer, scaled_pos, max(4, int(10 * self.scale)), (255, 255, 255), -1)
-            color_actual = self.color_hit if note_hit else self.color_normal
-            frame = np.where(circle_layer != 0, color_actual, frame)
-
-        if circle_layer is not None and scaled_pos is not None and progress is not None:
-            radius = int((10 + 30 * (1.0 - progress)) * self.scale)
-            cv2.circle(frame, scaled_pos, radius, (255, 255, 255), 2)
+                circle_layer[:] = 0
+                cv2.circle(circle_layer, scaled_pos, max(4, int(10 * self.scale)), (255, 255, 255), -1)
+                color_actual = self.color_hit if note_hit else self.color_normal
+                frame = np.where(circle_layer != 0, color_actual, frame)
         elif wait_time > 0:
             cv2.putText(
                 frame,
@@ -149,6 +141,17 @@ class GameRenderer:
                 (0, 255, 255),
                 2,
             )
+        elif note_type is not None:
+            cv2.putText(
+                frame,
+                f"Silencio ({note_type})",
+                (w // 2 - 110, 80),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                (200, 200, 200),
+                2,
+            )
+        
 
         cv2.putText(
             frame,

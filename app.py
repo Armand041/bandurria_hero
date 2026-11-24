@@ -110,18 +110,18 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp):
             if note_idx != last_note_idx:
                 note_hit = False
                 last_note_idx = note_idx
+            if circle_pos is not None:
+                scaled_pos = renderer.get_scaled_note_position(circle_pos, w, h)
 
-            scaled_pos = renderer.get_scaled_note_position(circle_pos, w, h)
-
-            if not note_hit:
-                if is_open:
-                    fretboard_rect = renderer._compute_fretboard_rect(w, h)[:4]
-                    if tracker.check_open_hit(detection_result, scaled_pos, fretboard_rect, frame.shape, renderer.scale):
+                if not note_hit:
+                    if is_open:
+                        fretboard_rect = renderer._compute_fretboard_rect(w, h)[:4]
+                        if tracker.check_open_hit(detection_result, scaled_pos, fretboard_rect, frame.shape, renderer.scale):
+                            score += 1
+                            note_hit = True
+                    elif tracker.check_hit(detection_result, scaled_pos, frame.shape, renderer.scale):
                         score += 1
                         note_hit = True
-                elif tracker.check_hit(detection_result, scaled_pos, frame.shape, renderer.scale):
-                    score += 1
-                    note_hit += 1
         elif state == "FINISHED" and not song_finished:
             song_finished = True
             song.stop()
@@ -133,12 +133,13 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp):
 
         if not song_finished:
             frame = renderer.draw_gameplay(
-                frame, circle_layer, scaled_pos, note_hit, progress, score, song.time, wait_time, note_type
+                frame, circle_layer, scaled_pos, note_hit, progress, score, song.time, wait_time, note_type, is_open
             )
             renderer.draw_hand_landmarks(frame, detection_result, tracker.connections)
         else:
+            total_playable= sum(1 for f in song.frets if f!=-2)
             frame = renderer.draw_game_over(
-                frame.shape, song.name, score, len(song.frets), score_saved, player_name, top_scores
+                frame.shape, song.name, score, total_playable, score_saved, player_name, top_scores
             )
 
         cv2.imshow(config.window_name, frame)
@@ -155,8 +156,9 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp):
                 player_name = player_name[:-1]
             elif key == 13:  # Enter
                 final_name = player_name if player_name else "AAA"
-                accuracy = (score / len(song.frets)) * 100
-                top_scores = save_score(song.name, final_name, score, len(song.frets), accuracy, song.speed)
+                total_playable = sum(1 for f in song.frets if f != -2)
+                accuracy = (score / total_playable) * 100
+                top_scores = save_score(song.name, final_name, score, total_playable, accuracy, song.speed)
                 score_saved = True
             elif len(player_name) < 3 and (65 <= key <= 90 or 97 <= key <= 122 or 48 <= key <= 57):
                 player_name += chr(key).upper()
