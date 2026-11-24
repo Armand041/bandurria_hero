@@ -14,7 +14,6 @@ class Config:
         self.default_fps = 30
 
         # Tiempos y detección
-        self.game_time = 6000.0
         self.num_hands = 1
         self.hit_threshold = 0.05
         self.fingertip_indices = [8, 12, 16, 20]  # Índice, corazón, anular, meñique

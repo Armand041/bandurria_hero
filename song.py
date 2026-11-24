@@ -27,12 +27,16 @@ class Song:
         self.Fpx, self.Spx = self.sf_to_px(self.frets, self.strings)
         self.nNote = 0
 
+        self.base_time = librosa.get_duration(path=audio_file)
+        self.time = self.base_time
+
         self._audio_cache = {}
         self.speed = 1.0
         self.set_speed(1.0)
 
     def set_speed(self, speed):
         self.speed = round(float(speed), 2)
+        self.time = self.base_time / self.speed
         self.tempo_sec = self.base_tempo_sec / self.speed
         self.start_offset = self.base_start_offset / self.speed
 
@@ -42,6 +46,12 @@ class Song:
             self.start_times.append(current_t)
             current_t += dur * self.tempo_sec
         self.end_time = current_t
+
+    def get_audio_time(self):
+        if not pygame.mixer.music.get_busy():
+            return None
+        pos_ms = pygame.mixer.music.get_pos()
+        return pos_ms / 1000.0 if pos_ms >= 0 else None
 
     def next_circle(self, frame_w, frame_h):
         if self.nNote == len(self.frets):
@@ -83,21 +93,17 @@ class Song:
         self.nNote = 0
         self.stop()
 
-    def get_audio_time(self):
-        """Devuelve el tiempo actual de reproducción en segundos."""
-        pos_ms = pygame.mixer.music.get_pos()
-        return pos_ms / 1000.0 if pos_ms >= 0 else 0.0
-
     def get_note_at_time(self, current_time, frame_w, frame_h):
         """
         Devuelve: (estado, circle_layer, circle_pos, progress, note_index)
         estado puede ser: 'WAITING', 'PLAYING' o 'FINISHED'
         """
+
+        if current_time is None or current_time >= self.end_time:
+            return "FINISHED", None, None, None, len(self.frets), None, False
+
         if current_time < self.start_offset:
             return "WAITING", None, None, None, -1, None, False
-
-        if current_time >= self.end_time:
-            return "FINISHED", None, None, None, len(self.frets), None, False
 
         # Avanzar el índice si el audio ya superó la nota actual
         while (

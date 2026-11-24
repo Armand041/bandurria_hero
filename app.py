@@ -104,7 +104,7 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp):
         scaled_pos = None
         wait_time = 0.0
 
-        if state == "WAITING":
+        if state == "WAITING" and current_audio_t is not None:
             wait_time = max(0.0, song.start_offset - current_audio_t)
         elif state == "PLAYING":
             if note_idx != last_note_idx:
@@ -126,11 +126,14 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp):
             song_finished = True
             song.stop()
 
-        config.game_time -= dt
+        if current_audio_t is not None:
+            song.time = max(0.0, (song.base_time / song.speed) - current_audio_t)
+        else:
+            song.time = 0.0
 
         if not song_finished:
             frame = renderer.draw_gameplay(
-                frame, circle_layer, scaled_pos, note_hit, progress, score, config.game_time, wait_time, note_type
+                frame, circle_layer, scaled_pos, note_hit, progress, score, song.time, wait_time, note_type
             )
             renderer.draw_hand_landmarks(frame, detection_result, tracker.connections)
         else:
