@@ -111,12 +111,22 @@ class GameRenderer:
         )
         return frame
 
-    def draw_gameplay(self, frame, circle_layer, scaled_pos, note_hit, progress, score, remaining_time, wait_time=0.0, note_type=None):
+    def draw_gameplay(self, frame, circle_layer, scaled_pos, note_hit, progress, score, remaining_time, wait_time=0.0, note_type=None, is_open=False):
         h, w = frame.shape[:2]
         cur_x, cur_y, cur_w, cur_h, _, _ = self._compute_fretboard_rect(w, h)
         img_png = cv2.resize(self.img_png_raw, (cur_w, cur_h))
 
         frame = self._overlay_png(frame, img_png, x=cur_x, y=cur_y)
+
+        if circle_layer is not None and scaled_pos is not None:
+            if progress is not None:
+                radius = int((14 + 28 * (1.0 - progress)) * self.scale)
+                cv2.circle(frame, scaled_pos, radius, (255, 255, 255), 2)
+
+            if is_open:
+                frame = self._draw_open_string_indicator(frame, scaled_pos, cur_x, cur_w, note_hit)
+            else:
+                frame = self._draw_vector_note(frame, scaled_pos, note_type or "negra")
 
         # Solo dibujar el círculo objetivo si ya hemos llegado a la primera nota
         if circle_layer is not None and scaled_pos is not None:
@@ -220,6 +230,30 @@ class GameRenderer:
         # Puntillo a la derecha si corresponde
         if "puntillo" in note_type:
             cv2.circle(frame, (cx + r + 6, cy), 2, color, -1)
+
+        return frame
+
+    def _draw_open_string_indicator(self, frame, scaled_pos, cur_x, cur_w, note_hit):
+        cx, cy = scaled_pos
+        color = config.color_hit if note_hit else (0, 255, 255)
+        r = max(10, int(14 * self.scale))
+
+        overlay = frame.copy()
+        cv2.line(overlay, (cur_x, cy), (cur_x + cur_w, cy), color, max(2, int(4 * self.scale)))
+        frame = cv2.addWeighted(overlay, 0.45, frame, 0.55, 0)
+
+        cv2.circle(frame, (cx, cy), r, (0, 0, 0), 5)
+        cv2.circle(frame, (cx, cy), r, color, 3)
+
+        cv2.putText(
+            frame,
+            "0",
+            (cx - int(5 * self.scale), cy + int(5 * self.scale)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5 * self.scale,
+            color,
+            2,
+        )
 
         return frame
 

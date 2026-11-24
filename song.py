@@ -94,10 +94,10 @@ class Song:
         estado puede ser: 'WAITING', 'PLAYING' o 'FINISHED'
         """
         if current_time < self.start_offset:
-            return "WAITING", None, None, None, -1, None
+            return "WAITING", None, None, None, -1, None, False
 
         if current_time >= self.end_time:
-            return "FINISHED", None, None, None, len(self.frets), None
+            return "FINISHED", None, None, None, len(self.frets), None, False
 
         # Avanzar el índice si el audio ya superó la nota actual
         while (
@@ -115,7 +115,8 @@ class Song:
         circle_layer, circle_position = self.create_circle(pos_f, pos_s, frame_w, frame_h)
         note_type = self.get_note_symbol_name(raw_dur)
 
-        return "PLAYING", circle_layer, circle_position, progress, self.nNote, note_type
+        is_open = self.frets[self.nNote] == -1
+        return "PLAYING", circle_layer, circle_position, progress, self.nNote, note_type, is_open
 
     def _load_csv(self, song_file):
         song_data = pd.read_csv(song_file)
@@ -153,7 +154,7 @@ class Song:
 
     @classmethod
     def sf_to_px(cls, frets, strings):
-        dict_f = {-2: 0, -1: 50}
+        dict_f = {-2: 0, -1: 150}
         for n_f, offset in enumerate([0, 28, 58, 85, 108, 134, 156, 176, 199, 215, 232, 250]):
             dict_f[n_f] = offset + 185
 

@@ -36,6 +36,27 @@ class HandTracker:
 
         return False
 
+    def check_open_hit(self, detection_result, target_px, fretboard_rect, frame_shape, scale) -> bool:
+        """Acierto al aire: la mano está visible pero ningún dedo pisa el diapasón."""
+        if not detection_result or not detection_result.hand_landmarks:
+            return False
+
+        cur_x, _, cur_w, _ = fretboard_rect[:4]
+        h, w = frame_shape[:2]
+        string_y = target_px[1]
+
+        y_tolerance = max(8, int(10 * scale))
+
+        for hand_landmarks in detection_result.hand_landmarks:
+            for idx in config.fingertip_indices:
+                lm = hand_landmarks[idx]
+                px, py = lm.x * w, lm.y * h
+                # Si algún dedo está dentro del área de trastes, no está tocando al aire
+                if cur_x <= px <= cur_x + cur_w and abs(py - string_y) < y_tolerance:
+                    return False
+
+        return True
+
     @staticmethod
     def _calculate_distance(point1, point2) -> float:
         return float(np.sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2))

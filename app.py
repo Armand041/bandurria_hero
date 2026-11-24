@@ -99,7 +99,7 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp):
         timestamp += frame_ms
 
         current_audio_t = song.get_audio_time()
-        state, circle_layer, circle_pos, progress, note_idx, note_type = song.get_note_at_time(current_audio_t, w, h)
+        state, circle_layer, circle_pos, progress, note_idx, note_type, is_open = song.get_note_at_time(current_audio_t, w, h)
 
         scaled_pos = None
         wait_time = 0.0
@@ -112,9 +112,16 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp):
                 last_note_idx = note_idx
 
             scaled_pos = renderer.get_scaled_note_position(circle_pos, w, h)
-            if not note_hit and tracker.check_hit(detection_result, scaled_pos, frame.shape, renderer.scale):
-                score += 1
-                note_hit = True
+
+            if not note_hit:
+                if is_open:
+                    fretboard_rect = renderer._compute_fretboard_rect(w, h)[:4]
+                    if tracker.check_open_hit(detection_result, scaled_pos, fretboard_rect, frame.shape, renderer.scale):
+                        score += 1
+                        note_hit = True
+                elif tracker.check_hit(detection_result, scaled_pos, frame.shape, renderer.scale):
+                    score += 1
+                    note_hit += 1
         elif state == "FINISHED" and not song_finished:
             song_finished = True
             song.stop()
