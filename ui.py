@@ -125,6 +125,7 @@ class GameRenderer:
 
             if is_open:
                 frame = self._draw_open_string_indicator(frame, scaled_pos, cur_x, cur_w, note_hit)
+                frame = self._draw_vector_note(frame, scaled_pos, note_type or "negra")
             else:
                 frame = self._draw_vector_note(frame, scaled_pos, note_type or "negra")
                 circle_layer[:] = 0
@@ -142,16 +143,16 @@ class GameRenderer:
                 2,
             )
         elif note_type is not None:
+            frame = self._draw_vector_rest(frame, (w // 2, 70), note_type)
             cv2.putText(
                 frame,
-                f"Silencio ({note_type})",
+                f"Silencio",
                 (w // 2 - 110, 80),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.8,
                 (200, 200, 200),
                 2,
             )
-        
 
         cv2.putText(
             frame,
@@ -233,6 +234,90 @@ class GameRenderer:
         # Puntillo a la derecha si corresponde
         if "puntillo" in note_type:
             cv2.circle(frame, (cx + r + 6, cy), 2, color, -1)
+
+        return frame
+
+    def _draw_vector_rest(self, frame, center_pos, note_type):
+        cx, cy = center_pos
+        s = self.scale
+        color = (220, 220, 220)
+        thick = max(2, int(2 * s))
+
+        if "redonda" in note_type:
+            # Línea de referencia + rectángulo colgando hacia abajo
+            w_line, w_box, h_box = int(18 * s), int(10 * s), int(5 * s)
+            cv2.line(frame, (cx - w_line, cy), (cx + w_line, cy), color, thick)
+            cv2.rectangle(
+                frame, (cx - w_box, cy), (cx + w_box, cy + h_box), color, -1
+            )
+
+        elif "blanca" in note_type:
+            # Línea de referencia + rectángulo apoyado encima (sombrero)
+            w_line, w_box, h_box = int(18 * s), int(10 * s), int(5 * s)
+            cv2.line(frame, (cx - w_line, cy), (cx + w_line, cy), color, thick)
+            cv2.rectangle(
+                frame, (cx - w_box, cy - h_box), (cx + w_box, cy), color, -1
+            )
+
+        elif "negra" in note_type:
+            # Zigzag vertical característico + curva inferior
+            pts = np.array(
+                [
+                    [cx - int(3 * s), cy - int(14 * s)],
+                    [cx + int(5 * s), cy - int(6 * s)],
+                    [cx - int(4 * s), cy + int(1 * s)],
+                    [cx + int(5 * s), cy + int(9 * s)],
+                ],
+                np.int32,
+            )
+            cv2.polylines(frame, [pts], False, color, thick)
+            cv2.ellipse(
+                frame,
+                (cx, cy + int(11 * s)),
+                (max(3, int(5 * s)), max(2, int(3 * s))),
+                0,
+                90,
+                260,
+                color,
+                thick,
+            )
+
+        elif "corchea" in note_type or "semicorchea" in note_type:
+            # Tramo diagonal principal + primer gancho con bolita
+            top_y = cy - int(10 * s)
+            bot_y = cy + int(12 * s)
+            cv2.line(
+                frame, (cx + int(5 * s), top_y), (cx - int(3 * s), bot_y), color, thick
+            )
+            cv2.circle(
+                frame, (cx - int(4 * s), top_y + int(2 * s)), max(2, int(3 * s)), color, -1
+            )
+            cv2.line(
+                frame,
+                (cx - int(4 * s), top_y + int(3 * s)),
+                (cx + int(4 * s), top_y + int(1 * s)),
+                color,
+                thick,
+            )
+
+            # Segundo gancho inferior si es semicorchea
+            if "semicorchea" in note_type:
+                mid_y = top_y + int(8 * s)
+                cv2.circle(
+                    frame, (cx - int(6 * s), mid_y + int(2 * s)), max(2, int(3 * s)), color, -1
+                )
+                cv2.line(
+                    frame,
+                    (cx - int(6 * s), mid_y + int(3 * s)),
+                    (cx + int(2 * s), mid_y + int(1 * s)),
+                    color,
+                    thick,
+                )
+
+        # Puntillo a la derecha si corresponde
+        if "puntillo" in note_type:
+            dot_x = cx + int(14 * s) if ("redonda" in note_type or "blanca" in note_type) else cx + int(10 * s)
+            cv2.circle(frame, (dot_x, cy - int(2 * s)), max(2, int(2 * s)), color, -1)
 
         return frame
 
