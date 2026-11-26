@@ -1,3 +1,9 @@
+"""
+Módulo principal de Bandurria Hero.
+Gestiona la cámara web, la ventana a pantalla completa, el menú de selección,
+el bucle de partida y la pantalla final de ranking.
+"""
+
 import time
 import cv2
 import numpy as np
@@ -13,6 +19,7 @@ SPEED_LEVELS = [0.25, 0.5, 0.75, 1.0]
 
 
 def init_camera():
+    """Inicializa la webcam y obtiene sus dimensiones y milisegundos por fotograma."""
     cap = cv2.VideoCapture(0)
     fps = cap.get(cv2.CAP_PROP_FPS) or config.default_fps
     frame_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -21,10 +28,12 @@ def init_camera():
 
 
 def should_exit(key):
+    """Comprueba si el usuario ha pulsado ESC o ha cerrado la ventana."""
     return key == 27 or cv2.getWindowProperty(config.window_name, cv2.WND_PROP_VISIBLE) < 1
 
 
 def handle_fretboard_controls(key, renderer):
+    """Gestiona el escalado (+/-), desplazamiento (WASD) y reseteo (R) del diapasón."""
     if key in (ord("+"), ord("="), ord("]")):
         renderer.adjust_zoom(0.05)
     elif key in (ord("-"), ord("[")):
@@ -42,6 +51,7 @@ def handle_fretboard_controls(key, renderer):
 
 
 def run_menu(cap, renderer, screen_w, screen_h):
+    """Muestra el menú principal para elegir canción, velocidad y ajuste del diapasón."""
     speed_idx = 3  # Empieza en -1
     while cap.isOpened():
         ret, frame = cap.read()
@@ -63,6 +73,7 @@ def run_menu(cap, renderer, screen_w, screen_h):
             speed_idx = min(len(SPEED_LEVELS) - 1, speed_idx + 1)
         renderer.adjust_speed(SPEED_LEVELS[speed_idx])
 
+        # Selección de canción mediante teclado numérico
         if key in (ord("1"), ord("2"), ord("3")):
             selected = SONGS[int(chr(key)) - 1]
             selected.set_speed(current_speed)
@@ -73,6 +84,7 @@ def run_menu(cap, renderer, screen_w, screen_h):
 
 
 def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp, screen_w, screen_h):
+    """Ejecuta una partida completa: detección de mano, evaluación de notas y ranking final."""
     song.reset()
     song.play()
 
@@ -91,10 +103,10 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp, screen_w
 
         frame = cv2.flip(frame, 1)
         h, w = frame.shape[:2]
-
+        # Detección de landmarks de la mano con MediaPipe
         detection_result = tracker.detect(frame, timestamp)
         timestamp += frame_ms
-
+        # Consulta del estado y nota activa según el tiempo actual del audio
         current_audio_t = song.get_audio_time()
         state, circle_layer, circle_pos, progress, note_idx, note_type, is_open = song.get_note_at_time(current_audio_t, w, h)
 
@@ -104,12 +116,13 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp, screen_w
         if state == "WAITING" and current_audio_t is not None:
             wait_time = max(0.0, song.start_offset - current_audio_t)
         elif state == "PLAYING":
+            # Al cambiar de nota se reinicia la bandera de acierto
             if note_idx != last_note_idx:
                 note_hit = False
                 last_note_idx = note_idx
             if circle_pos is not None:
                 scaled_pos = renderer.get_scaled_note_position(circle_pos, w, h)
-
+                # Comprobación de acierto (cuerda al aire o traste pisado)
                 if not note_hit:
                     if is_open:
                         fretboard_rect = renderer._compute_fretboard_rect(w, h)[:4]
@@ -122,12 +135,12 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp, screen_w
         elif state == "FINISHED" and not song_finished:
             song_finished = True
             song.stop()
-
+        # Cálculo del tiempo restante de la canción
         if current_audio_t is not None:
             song.time = max(0.0, (song.base_time / song.speed) - current_audio_t)
         else:
             song.time = 0.0
-
+        # Renderizado de la partida o de la pantalla final
         if not song_finished:
             frame = renderer.draw_gameplay(
                 frame, circle_layer, scaled_pos, note_hit, progress, score, song.time, wait_time, note_type, is_open
@@ -145,7 +158,7 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp, screen_w
         if should_exit(key):
             song.stop()
             return timestamp, False
-
+        # Controles según el estado: ajuste del diapasón en partida o entrada de iniciales al terminar
         if not song_finished:
             handle_fretboard_controls(key, renderer)
         elif not score_saved:
@@ -167,6 +180,7 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp, screen_w
 
 
 def setup_window():
+    """Configura la ventana principal de OpenCV en modo pantalla completa."""
     cv2.namedWindow(config.window_name, cv2.WINDOW_NORMAL)
     cv2.setWindowProperty(
         config.window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN
@@ -174,6 +188,7 @@ def setup_window():
 
 
 def get_screen_size():
+    """Obtiene la resolución actual del monitor mediante Tkinter."""
     root = tk.Tk()
     root.withdraw()
     w, h = root.winfo_screenwidth(), root.winfo_screenheight()
@@ -182,6 +197,7 @@ def get_screen_size():
 
 
 def show_fullscreen_frame(frame, screen_w, screen_h):
+    """Escala el fotograma manteniendo su proporción y lo centra con bandas negras."""
     h, w = frame.shape[:2]
     scale = min(screen_w / w, screen_h / h)
     new_w, new_h = int(w * scale), int(h * scale)
@@ -196,6 +212,7 @@ def show_fullscreen_frame(frame, screen_w, screen_h):
 
 
 def main():
+    """Inicialización de recursos y alternancia entre menú y partida."""
     tracker = HandTracker()
     cap, frame_ms, frame_w, frame_h = init_camera()
     renderer = GameRenderer(frame_w, frame_h)

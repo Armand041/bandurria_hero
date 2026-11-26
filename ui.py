@@ -1,3 +1,9 @@
+"""
+Módulo de interfaz gráfica con OpenCV.
+Renderiza el menú, el diapasón escalable y desplazable, las figuras musicales vectoriales,
+los landmarks de la mano y la pantalla de resultados y ranking.
+"""
+
 import numpy as np
 import cv2
 from config import config
@@ -5,6 +11,7 @@ from config import config
 
 class GameRenderer:
     def __init__(self, frame_w, frame_h) -> None:
+        """Carga la imagen del diapasón y prepara el estado visual inicial."""
         self.img_png_raw = cv2.imread(config.fretboard_img_path, cv2.IMREAD_UNCHANGED)
         self.scale = 1.0
         self.offset_x = 0
@@ -16,21 +23,26 @@ class GameRenderer:
         self.color_hit = np.full_like(back, config.color_hit)
 
     def adjust_zoom(self, delta):
+        """Modifica la escala del diapasón dentro de los límites configurados."""
         self.scale = float(np.clip(round(self.scale + delta, 2), config.min_scale, config.max_scale))
 
     def adjust_speed(self, n_speed):
+        """Actualiza la velocidad mostrada en la interfaz."""
         self.speed = round(n_speed, 2)
 
     def move_fretboard(self, dx, dy):
+        """Desplaza el diapasón en los ejes X e Y."""
         self.offset_x += dx
         self.offset_y += dy
 
     def reset_transform(self):
+        """Devuelve el diapasón a su tamaño (100%) y posición originales."""
         self.scale = 1.0
         self.offset_x = 0
         self.offset_y = 0
 
     def _compute_fretboard_rect(self, frame_w, frame_h):
+        """Calcula la posición y tamaño finales del diapasón evitando que se salga del fotograma."""
         base_w, base_h = config.fretboard_base_w, config.fretboard_base_h
         base_x, base_y = config.fretboard_base_x, config.fretboard_base_y
 
@@ -49,6 +61,7 @@ class GameRenderer:
         return cur_x, cur_y, cur_w, cur_h, actual_dx, actual_dy
 
     def get_scaled_note_position(self, raw_pos, frame_w, frame_h):
+        """Transforma la posición base de una nota según el zoom y desplazamiento actuales."""
         _, _, _, _, actual_dx, actual_dy = self._compute_fretboard_rect(frame_w, frame_h)
         center_x = config.fretboard_base_x + config.fretboard_base_w / 2
         center_y = config.fretboard_base_y + config.fretboard_base_h / 2
@@ -59,6 +72,7 @@ class GameRenderer:
         )
 
     def draw_menu(self, frame, songs):
+        """Dibuja el menú principal sobre el vídeo de la cámara con previsualización del diapasón."""
         h, w = frame.shape[:2]
         overlay = frame.copy()
         cv2.rectangle(overlay, (0, 0), (w, h), (0, 0, 0), -1)
@@ -112,6 +126,7 @@ class GameRenderer:
         return frame
 
     def draw_gameplay(self, frame, circle_layer, scaled_pos, note_hit, progress, score, remaining_time, wait_time=0.0, note_type=None, is_open=False):
+        """Renderiza el diapasón, el marcador, la cuenta atrás y las notas o silencios activos."""
         h, w = frame.shape[:2]
         cur_x, cur_y, cur_w, cur_h, _, _ = self._compute_fretboard_rect(w, h)
         img_png = cv2.resize(self.img_png_raw, (cur_w, cur_h))
@@ -119,6 +134,7 @@ class GameRenderer:
         frame = self._overlay_png(frame, img_png, x=cur_x, y=cur_y)
 
         if circle_layer is not None and scaled_pos is not None:
+            # Aro blanco que se contrae según el progreso temporal de la nota
             if progress is not None:
                 radius = int((14 + 28 * (1.0 - progress)) * self.scale)
                 cv2.circle(frame, scaled_pos, radius, (255, 255, 255), 2)
@@ -166,6 +182,7 @@ class GameRenderer:
         return frame
 
     def draw_hand_landmarks(self, frame, detection_result, connections):
+        """Superpone el esqueleto y los puntos clave detectados de la mano."""
         if not detection_result or not detection_result.hand_landmarks:
             return
 
@@ -186,6 +203,7 @@ class GameRenderer:
                 cv2.circle(frame, (int(landmark.x * w), int(landmark.y * h)), 3, (0, 255, 0), -1)
 
     def draw_game_over(self, frame_shape, song_name, score, total_notes, score_saved, player_name, top_scores):
+        """Muestra puntuación final, y ranking con iniciales (pidiendolas anteriormente) """
         h, w = frame_shape[:2]
         frame = np.zeros((h, w, 3), dtype=np.uint8)
         accuracy = (score / total_notes) * 100
@@ -210,6 +228,7 @@ class GameRenderer:
         return frame
 
     def _draw_vector_note(self, frame, scaled_pos, note_type):
+        """Dibuja de forma vectorial la figura musical (redonda, blanca, negra, etc.) sobre la nota."""
         cx = scaled_pos[0]
         cy = max(30, scaled_pos[1] - int(28 * self.scale))
         r = max(4, int(6 * self.scale))
@@ -238,6 +257,7 @@ class GameRenderer:
         return frame
 
     def _draw_vector_rest(self, frame, center_pos, note_type):
+        """Dibuja el símbolo musical del silencio correspondiente."""
         cx, cy = center_pos
         s = self.scale
         color = (220, 220, 220)
@@ -322,6 +342,7 @@ class GameRenderer:
         return frame
 
     def _draw_open_string_indicator(self, frame, scaled_pos, cur_x, cur_w, note_hit):
+        """Resalta toda la cuerda e indica con un '0' que debe tocarse al aire."""
         cx, cy = scaled_pos
         color = config.color_hit if note_hit else (0, 255, 255)
         r = max(10, int(14 * self.scale))
@@ -347,6 +368,7 @@ class GameRenderer:
 
     @staticmethod
     def _overlay_png(background, overlay, x, y):
+        """Superpone el PNG del diapasón con transparencia sobre el fotograma."""
         h, w = overlay.shape[:2]
         bg_h, bg_w = background.shape[:2]
 

@@ -1,3 +1,7 @@
+"""
+Script auxiliar para descargar automáticamente el modelo preentrenado
+Hand Landmarker de MediaPipe en la carpeta models/.
+"""
 import requests
 import os
 import tqdm

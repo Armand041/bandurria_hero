@@ -1,3 +1,8 @@
+"""
+Gestión de canciones: lectura de partituras en CSV, sincronización temporal con el audio
+y ajuste de velocidad (time-stretching) sin alterar el tono original.
+"""
+
 import io
 import os
 import librosa
@@ -12,6 +17,7 @@ pygame.mixer.init()
 
 class Song:
     def __init__(self, song_file, audio_file, start_offset=0.0) -> None:
+        """Carga la partitura CSV, calcula las coordenadas base y prepara el audio."""
         self._check_file(song_file)
 
         self.name, self.tempo = self._parse_filename(song_file)
@@ -30,11 +36,12 @@ class Song:
         self.base_time = librosa.get_duration(path=audio_file)
         self.time = self.base_time
 
-        self._audio_cache = {}
+        self._audio_cache = {}  # Caché en memoria para no recalcular el estirado de audio
         self.speed = 1.0
         self.set_speed(1.0)
 
     def set_speed(self, speed):
+        """Recalcula el tempo y los instantes de inicio de cada nota según la velocidad elegida."""
         self.speed = round(float(speed), 2)
         self.time = self.base_time / self.speed
         self.tempo_sec = self.base_tempo_sec / self.speed
@@ -48,12 +55,14 @@ class Song:
         self.end_time = current_t
 
     def get_audio_time(self):
+        """Devuelve el tiempo actual de reproducción en segundos, o None si el audio paró."""
         if not pygame.mixer.music.get_busy():
             return None
         pos_ms = pygame.mixer.music.get_pos()
         return pos_ms / 1000.0 if pos_ms >= 0 else None
 
     def next_circle(self, frame_w, frame_h):
+        """Devuelve la siguiente nota de forma secuencial."""
         if self.nNote == len(self.frets):
             raise IndexError(f"{self.nNote} out of index bounds")
 
@@ -118,6 +127,7 @@ class Song:
         progress = min(1.0, max(0.0, (current_time - note_start) / note_dur))
         
         note_type = self.get_note_symbol_name(raw_dur)
+        # Traste -2 representa un silencio en la partitura
         is_rest = self.frets[self.nNote] == -2
         if is_rest:
             return "PLAYING", None, None, progress, self.nNote, note_type, False
@@ -125,11 +135,12 @@ class Song:
         pos_f, pos_s = self.Fpx[self.nNote], self.Spx[self.nNote]
         circle_layer, circle_position = self.create_circle(pos_f, pos_s, frame_w, frame_h)
         
-
+        # Traste -1 representa una cuerda al aire (0 en el CSV)
         is_open = self.frets[self.nNote] == -1
         return "PLAYING", circle_layer, circle_position, progress, self.nNote, note_type, is_open
 
     def _load_csv(self, song_file):
+        """Lee trastes, cuerdas y duraciones desde el CSV (ajustando índices a base 0)."""
         song_data = pd.read_csv(song_file)
         self.frets = [f - 1 for f in song_data["Traste"].tolist()]
         self.strings = [s - 1 for s in song_data["Cuerda"].tolist()]
@@ -142,6 +153,7 @@ class Song:
 
     @staticmethod
     def _parse_filename(song_file):
+        """Extrae el título y el BPM del nombre del archivo (formato 'titulo-tempo.csv')."""
         filename = os.path.basename(song_file)
         name_wo_ext, _ = os.path.splitext(filename)
         name, tempo = name_wo_ext.rsplit("-", 1)
@@ -149,6 +161,7 @@ class Song:
 
     @staticmethod
     def get_note_symbol_name(duration_beats):
+        """Asocia la duración en pulsos a la figura musical más cercana."""
         catalog = [
             (4.0, "redonda"),
             (3.0, "blanca_puntillo"),
@@ -165,6 +178,7 @@ class Song:
 
     @classmethod
     def sf_to_px(cls, frets, strings):
+        """Mapea los índices de traste y cuerda a coordenadas en píxeles sobre el diapasón base."""
         dict_f = {-2: 0, -1: 150}
         for n_f, offset in enumerate([0, 28, 58, 85, 108, 134, 156, 176, 199, 215, 232, 250]):
             dict_f[n_f] = offset + 185
@@ -177,10 +191,11 @@ class Song:
 
     @classmethod
     def create_circle(cls, pos_f, pos_s, frame_w, frame_h):
+        """Prepara donde se dibujará la nota y devuelve su posición base."""
         circle_layer = np.zeros((frame_h, frame_w, 3), dtype=np.uint8)
         return circle_layer, (pos_f, pos_s)
 
-
+# Instancias de las canciones disponibles
 clavelitos = Song(
     f"{config.song_base_path}/clavelitos-185.csv",
     f"{config.song_base_path}/clavelitos.mp3",

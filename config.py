@@ -1,3 +1,8 @@
+"""
+Configuración global de Bandurria Hero: rutas de recursos, parámetros de detección,
+dimensiones base del diapasón y paleta de colores.
+"""
+
 import os
 
 
