@@ -19,6 +19,22 @@
                 "total": 341,
                 "accuracy": 0.0
             }
+        ],
+        "0.75x": [
+            {
+                "name": "RUU",
+                "score": 290,
+                "total": 341,
+                "accuracy": 85.0
+            }
+        ],
+        "0.5x": [
+            {
+                "name": "MBG",
+                "score": 308,
+                "total": 341,
+                "accuracy": 90.3
+            }
         ]
     }
 }

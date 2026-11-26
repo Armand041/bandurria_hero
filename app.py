@@ -1,5 +1,7 @@
 import time
 import cv2
+import numpy as np
+import tkinter as tk
 from config import config
 from hand_tracker import HandTracker
 from ranking import save_score
@@ -39,7 +41,7 @@ def handle_fretboard_controls(key, renderer):
         renderer.reset_transform()
 
 
-def run_menu(cap, renderer):
+def run_menu(cap, renderer, screen_w, screen_h):
     speed_idx = 3  # Empieza en -1
     while cap.isOpened():
         ret, frame = cap.read()
@@ -49,7 +51,7 @@ def run_menu(cap, renderer):
         current_speed = SPEED_LEVELS[speed_idx]
         frame = cv2.flip(frame, 1)
         frame = renderer.draw_menu(frame, SONGS)
-        cv2.imshow(config.window_name, frame)
+        show_fullscreen_frame(frame, screen_w, screen_h)
 
         key = cv2.waitKey(1) & 0xFF
         if should_exit(key):
@@ -70,7 +72,7 @@ def run_menu(cap, renderer):
     return None
 
 
-def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp):
+def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp, screen_w, screen_h):
     song.reset()
     song.play()
 
@@ -81,16 +83,11 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp):
     score_saved = False
     player_name = ""
     top_scores = []
-    last_time = time.perf_counter()
 
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
-
-        now = time.perf_counter()
-        dt = now - last_time
-        last_time = now
 
         frame = cv2.flip(frame, 1)
         h, w = frame.shape[:2]
@@ -137,12 +134,12 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp):
             )
             renderer.draw_hand_landmarks(frame, detection_result, tracker.connections)
         else:
-            total_playable= sum(1 for f in song.frets if f!=-2)
+            total_playable = sum(1 for f in song.frets if f!=-2)
             frame = renderer.draw_game_over(
                 frame.shape, song.name, score, total_playable, score_saved, player_name, top_scores
             )
 
-        cv2.imshow(config.window_name, frame)
+        show_fullscreen_frame(frame, screen_w, screen_h)
         key = cv2.waitKey(1) & 0xFF
 
         if should_exit(key):
@@ -169,20 +166,51 @@ def run_game_session(cap, renderer, tracker, song, frame_ms, timestamp):
     return timestamp, False
 
 
+def setup_window():
+    cv2.namedWindow(config.window_name, cv2.WINDOW_NORMAL)
+    cv2.setWindowProperty(
+        config.window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN
+    )
+
+
+def get_screen_size():
+    root = tk.Tk()
+    root.withdraw()
+    w, h = root.winfo_screenwidth(), root.winfo_screenheight()
+    root.destroy()
+    return w, h
+
+
+def show_fullscreen_frame(frame, screen_w, screen_h):
+    h, w = frame.shape[:2]
+    scale = min(screen_w / w, screen_h / h)
+    new_w, new_h = int(w * scale), int(h * scale)
+    resized = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+
+    canvas = np.zeros((screen_h, screen_w, 3), dtype=np.uint8)
+    y_offset = (screen_h - new_h) // 2
+    x_offset = (screen_w - new_w) // 2
+    canvas[y_offset: y_offset + new_h, x_offset: x_offset + new_w] = resized
+
+    cv2.imshow(config.window_name, canvas)
+
+
 def main():
     tracker = HandTracker()
     cap, frame_ms, frame_w, frame_h = init_camera()
     renderer = GameRenderer(frame_w, frame_h)
+    screen_w, screen_h = get_screen_size()
     timestamp = 0
+    setup_window()
 
     try:
         while cap.isOpened():
-            selected_song = run_menu(cap, renderer)
+            selected_song = run_menu(cap, renderer, screen_w, screen_h)
             if selected_song is None:
                 break
 
             timestamp, keep_running = run_game_session(
-                cap, renderer, tracker, selected_song, frame_ms, timestamp
+                cap, renderer, tracker, selected_song, frame_ms, timestamp, screen_w, screen_h
             )
             if not keep_running:
                 break
